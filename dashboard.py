@@ -11,6 +11,7 @@ import pandas as pd
 import numpy as np
 import plotly
 import requests
+import pickle
 import re
 import os
 import base64
@@ -121,10 +122,21 @@ main_app.layout = html.Div(
     [State('upload_button', 'filename')]
 )
 def upload_function(contents, filename):
-    upload_msg = '上傳成功:{}'.format(filename)
     content_type, content_str = contents.split(',')
     decode_str = base64.b64decode(content_str)
-    df = pd.read_csv(io.StringIO(decode_str.decode('big5')))
+    df = None
+    if filename.lower().endswith('.csv'):
+        df = pd.read_csv(io.StringIO(decode_str.decode('big5')))
+    else:
+        try:
+            df = pickle.loads(decode_str)
+        except:
+            pass
+    if df is not None and isinstance(df, pd.DataFrame):
+        upload_msg = 'Upload Success:{}'.format(filename)
+    else:
+        upload_msg = 'Upload Fail:{0}      Supported File Format:[csv, pickle]'.format(filename)
+        return upload_msg, None, None
     buffer = io.StringIO()
     df.info(buf=buffer)
     df_info_output = buffer.getvalue()
