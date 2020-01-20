@@ -117,7 +117,8 @@ main_app.layout = html.Div(
 
 
 @main_app.callback(
-    [Output('upload_status', 'children'), Output('upload_table', 'columns'), Output('upload_table', 'data')],
+    [Output('upload_status', 'children'), Output('upload_table', 'columns'), Output('upload_table', 'data'),
+     Output('upload_table_extend', 'open')],
     [Input('upload_button', 'contents')],
     [State('upload_button', 'filename')]
 )
@@ -136,7 +137,7 @@ def upload_function(contents, filename):
         upload_msg = 'Upload Success:{}'.format(filename)
     else:
         upload_msg = 'Upload Fail:{0}      Supported File Format:[csv, pickle]'.format(filename)
-        return upload_msg, None, None
+        return upload_msg, None, None, False
     buffer = io.StringIO()
     df.info(buf=buffer)
     df_info_output = buffer.getvalue()
@@ -164,7 +165,7 @@ def upload_function(contents, filename):
     df_info = extract_info()
     os.makedirs('database', exist_ok=True)
     df.to_pickle(os.path.join('database', filename.split('.')[0]))
-    return upload_msg, [{"name": col, "id": col} for col in df_info.columns], df_info.to_dict('records')
+    return upload_msg, [{"name": col, "id": col} for col in df_info.columns], df_info.to_dict('records'), True
 
 
 @main_app.callback(
@@ -246,6 +247,7 @@ def calculate_correlation(n_clicks, targets):
                 target_dict[feature] = round(corr_coefficient, 2)
             correlation_dicts.append(target_dict)
     return [{'name': k, 'id': k} for k in correlation_dicts[0].keys()], correlation_dicts, True
+
 
 if __name__ == '__main__':
     main_app.run_server(host='0.0.0.0', port=1111)
