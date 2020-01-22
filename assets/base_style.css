@@ -1,0 +1,16 @@
+body{
+    background-color: #282b38;
+    font-family: Verdana, "Open Sans", "HelveticaNeue", "Helvetica Neue", Helvetica, Arial, sans-serif;
+}
+
+h1{
+    font-family: Georgia, sans-serif;
+    text-align: center;
+}
+
+#react-entry-point{
+    background-color: white;
+    border-radius: 10px;
+    padding: 1%;
+    margin: 2%;
+}
