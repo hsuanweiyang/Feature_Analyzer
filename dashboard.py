@@ -7,6 +7,7 @@ import dash_table
 import dash_bootstrap_components as dbc
 import dash_core_components as dcc
 import dash_html_components as html
+import dash_daq
 import pandas as pd
 import numpy as np
 import plotly
@@ -20,7 +21,8 @@ import logging
 
 logging.basicConfig(level=logging.INFO)
 server = Flask(__name__)
-main_app = dash.Dash(server=server, routes_pathname_prefix='/main/')
+main_app = dash.Dash(server=server, routes_pathname_prefix='/main/',
+                     meta_tags=[{'name': 'viewport', 'content': 'width=device-width, initial-scale=1.0'}])
 main_app.title = 'Feature Analyzer'
 main_app.secret_key = 'HsuanweiyangFeatureAnalyzerKey'
 
@@ -33,18 +35,18 @@ upload_data_card = dbc.Card(
                     [
                         dbc.Col(dcc.Upload(id='upload_button', children=[html.Button('Upload')], multiple=False)),
                         dbc.Col(html.Div(id='upload_status'))
-                    ]
+                    ], style={'display': 'inline-flex'}
                 ),
                 dbc.Row(
                     [
                         html.Details(
                             [
-                                html.Summary('Expend Upload Info'),
+                                html.Summary('Extend Upload Info'),
                                 dash_table.DataTable(
                                     id='upload_table',
                                     style_table={'height': '30vh', 'overflowY': 'scroll'}
                                 )
-                            ], open=False, id='upload_table_expend'
+                            ], open=True, id='upload_table_extend'
                         )
                     ]
                 ),
@@ -61,20 +63,20 @@ feature_info_card = dbc.Card(
             [
                 dbc.Row(
                     [
-                        dcc.Dropdown(id='file_select', placeholder='Select File'),
+                        dcc.Dropdown(id='file_select', placeholder='Select File', style={'width': '15vw'}),
                         dbc.Button(id='file_select_button', children='Select')
-                    ]
+                    ], style={'display': 'inline-flex'}
                 ),
                 dbc.Row(
                     [
                         html.Details(
                             [
-                                html.Summary('Expend Details'),
+                                html.Summary('Feature Details'),
                                 dash_table.DataTable(
                                     id='file_info_table', style_table={'height': '30vh', 'overflowY': 'scroll'},
                                     row_selectable="multi", sort_action="native"
                                 )
-                            ], open=False, id='file_info_table_expend'
+                            ], open=True, id='file_info_table_extend'
                         )
                     ]
                 ),
@@ -82,11 +84,11 @@ feature_info_card = dbc.Card(
                     [
                         html.Details(
                             [
-                                html.Summary('Expend Graph'),
+                                html.Summary('Graph'),
                                 dcc.Graph(
                                     id='feature_graph'
                                 )
-                            ], open=False, id='feature_graph_expend'
+                            ], open=True, id='feature_graph_extend'
                         )
                     ]
                 ),
@@ -94,14 +96,14 @@ feature_info_card = dbc.Card(
                     [
                         html.Details(
                             [
-                                html.Summary('Expend Correlation Table'),
+                                html.Summary('Extend Correlation Table'),
                                 dcc.Checklist(id='target_select', labelStyle={'display': 'inline-block'}),
                                 dbc.Button(id='target_select_button', children='Submit'),
                                 dash_table.DataTable(
                                     id='feature_correlation_table', style_table={'height': '30vh', 'overflowY': 'scroll'},
-                                    sort_action="native", export_headers='display', export_format='csv'
+                                    sort_action="native", export_headers='display', export_format='csv', row_deletable=True
                                 )
-                            ], open=False, id='feature_correlation_table_expend'
+                            ], open=True, id='feature_correlation_table_extend'
                         )
                     ]
                 ),
@@ -110,9 +112,18 @@ feature_info_card = dbc.Card(
     ]
 )
 
+menu_cards = dcc.Tabs(
+    [
+        dcc.Tab(label='DATASETS', children=[upload_data_card]),
+        dcc.Tab(label='PLOT', children=[feature_info_card]),
+    ]
+)
 
 main_app.layout = html.Div(
-    [upload_data_card, feature_info_card]
+    [
+        html.H1('Feature Analysis Tool'),
+        menu_cards
+    ]
 )
 
 
@@ -182,15 +193,15 @@ feature_list = None
 
 
 @main_app.callback(
-    Output('target_select', 'options'),
+    [Output('target_select', 'options'), Output('feature_correlation_table_extend', 'open')],
     [Input('file_info_table', 'data')]
 )
 def update_features(info_data):
-    return [{'label': n, 'value': n} for n in feature_list]
+    return [{'label': n, 'value': n} for n in feature_list], True
 
 
 @main_app.callback(
-    [Output('file_info_table', 'columns'), Output('file_info_table', 'data'), Output('file_info_table_expend', 'open')],
+    [Output('file_info_table', 'columns'), Output('file_info_table', 'data'), Output('file_info_table_extend', 'open')],
     [Input('file_select_button', 'n_clicks')],
     [State('file_select', 'value')]
 )
@@ -204,11 +215,11 @@ def get_file_info(n_clicks, file_name):
         global feature_list
         feature_data_df = df.sort_index()
         feature_list = list(df_stat.index)
-    return [{"name": col, "id": col} for col in df_stat.columns], df_stat.to_dict('records'), True
+        return [{"name": col, "id": col} for col in df_stat.columns], df_stat.to_dict('records'), True
 
 
 @main_app.callback(
-    [Output('feature_graph', 'figure'), Output('feature_graph_expend', 'open')],
+    [Output('feature_graph', 'figure'), Output('feature_graph_extend', 'open')],
     [Input('file_select_button', 'n_clicks'), Input('file_info_table', 'selected_rows')],
     [State('file_select', 'value')]
 )
@@ -232,8 +243,7 @@ def plot_feature(n_clicks, selected_row_idx, file_name):
 
 
 @main_app.callback(
-    [Output('feature_correlation_table', 'columns'), Output('feature_correlation_table', 'data'),
-     Output('feature_correlation_table_expend', 'open')],
+    [Output('feature_correlation_table', 'columns'), Output('feature_correlation_table', 'data')],
     [Input('target_select_button', 'n_clicks')],
     [State('target_select', 'value')]
 )
@@ -246,7 +256,7 @@ def calculate_correlation(n_clicks, targets):
                 corr_coefficient = pearsonr(feature_data_df[target], feature_data_df[feature].values)[0]
                 target_dict[feature] = round(corr_coefficient, 2)
             correlation_dicts.append(target_dict)
-    return [{'name': k, 'id': k} for k in correlation_dicts[0].keys()], correlation_dicts, True
+    return [{'name': k, 'id': k} for k in correlation_dicts[0].keys()], correlation_dicts
 
 
 if __name__ == '__main__':
